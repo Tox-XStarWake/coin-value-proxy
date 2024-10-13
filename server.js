@@ -2,6 +2,14 @@ const puppeteer = require('puppeteer');
 const express = require('express');
 const app = express();
 
+// Main index route to show the server is running
+app.get('/', (req, res) => {
+  res.send(`
+    <h1>Coin Value Proxy Server is Running!</h1>
+    <p>Everything is working fine. Visit <a href="/get-coin-value">/get-coin-value</a> to fetch the current coin value.</p>
+  `);
+});
+
 console.log('Starting server...');  // Initial log to confirm server is starting
 
 app.get('/get-coin-value', async (req, res) => {
@@ -27,7 +35,7 @@ app.get('/get-coin-value', async (req, res) => {
     let retries = 0;
     while (coinValue === 'No Data Available' && retries < 10) {  // Retry up to 10 times
       console.log('Coin value not available yet, retrying...');
-      await page.waitForTimeout(1000);  // Wait for 1 second before checking again
+      await new Promise(resolve => setTimeout(resolve, 1000));  // Wait for 1 second before checking again
       coinValue = await page.$eval('.goalText', el => el.textContent.trim());
       retries++;
     }
