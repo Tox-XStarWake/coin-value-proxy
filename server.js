@@ -1,10 +1,13 @@
 const puppeteer = require('puppeteer');
 const express = require('express');
 const fs = require('fs');
+const axios = require('axios');  // Use axios to make HTTP requests to OBS
 const app = express();
 
-// File path where the coin value will be stored as HTML
-const coinValueHtmlFile = '/var/www/html/coin_value.html';  // Assuming a default web root for Ubuntu
+const OBS_URL = 'http://ToxPC.xstarwake.com:4455'; // The OBS WebSocket server URL
+const OBS_PASSWORD = 'WakeCrew0BS'; // The OBS WebSocket password
+const COIN_THRESHOLD = 2500;
+const coinValueHtmlFile = '/var/www/html/coin_value.html'; 
 
 // Helper function to read the last saved coin value from the HTML file
 const getLastSavedCoinValue = () => {
@@ -29,77 +32,91 @@ const saveCoinValueAsHtml = (coinValue) => {
     </body>
     </html>
   `;
-
-  fs.writeFile(coinValueHtmlFile, htmlContent, 'utf8', (err) => {
-    if (err) {
-      console.error(`Failed to write file: ${err.message}`);
-    } else {
-      console.log(`Coin value saved to HTML file: ${coinValue}`);
-    }
-  });
+  fs.writeFileSync(coinValueHtmlFile, htmlContent, 'utf8');
+  console.log(`Coin value saved to HTML file: ${coinValue}`);
 };
 
-// Main index route to show the server is running
-app.get('/', (req, res) => {
-  res.send(`
-    <h1>Coin Value Proxy Server is Running!</h1>
-    <p>Everything is working fine. Visit <a href="/get-coin-value">/get-coin-value</a> to fetch the current coin value.</p>
-  `);
-});
+// Function to trigger OBS to unhide source
+const triggerOBS = async () => {
+  try {
+    console.log("Triggering OBS scene...");
+    // You need to authenticate and send requests to the OBS WebSocket API.
+    await axios.post(`${OBS_URL}/trigger`, {
+      password: OBS_PASSWORD,
+      requestType: "SetSceneItemEnabled",
+      sceneName: "Test Scene",
+      sourceName: "Noise",
+      visible: true,
+    });
 
-console.log('Starting server...');  // Initial log to confirm server is starting
+    console.log("OBS Source unhidden, waiting 5 seconds...");
+
+    setTimeout(async () => {
+      await axios.post(`${OBS_URL}/trigger`, {
+        password: OBS_PASSWORD,
+        requestType: "SetSceneItemEnabled",
+        sceneName: "Test Scene",
+        sourceName: "Noise",
+        visible: false,
+      });
+      console.log("OBS Source rehidden after 5 seconds.");
+    }, 5000);
+  } catch (error) {
+    console.error("Error triggering OBS:", error);
+  }
+};
+
+// Route to manually trigger OBS using /testOBS
+app.get('/testOBS', async (req, res) => {
+  try {
+    console.log('Received request to manually trigger OBS');
+    await triggerOBS();  // Call the triggerOBS function
+    res.send('OBS trigger has been manually activated.');
+  } catch (error) {
+    console.error('Error during manual OBS trigger:', error);
+    res.status(500).send('Failed to trigger OBS.');
+  }
+});
 
 app.get('/get-coin-value', async (req, res) => {
   try {
-    console.log('Received request for coin value');  // Log when a request is received
+    console.log('Received request for coin value');
     const browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
-    console.log('Launched Puppeteer');  // Log Puppeteer launch
     const page = await browser.newPage();
-    console.log('Opened a new page');  // Log page open
     await page.goto('https://tikfinity.zerody.one/widget/goal?cid=146&metric=coins');
-    console.log('Navigated to the coin goal page');  // Log navigation
-
-    // Wait for the goalText div to load
     await page.waitForSelector('.goalText');
-    console.log('Found goalText element');  // Log when the element is found
 
-    // Check and wait for the value to update from 'No Data Available'
     let coinValue = await page.$eval('.goalText', el => el.textContent.trim());
     let retries = 0;
-    while (coinValue === 'No Data Available' && retries < 5) {  // Retry up to 5 times
+    while (coinValue === 'No Data Available' && retries < 5) {
       console.log('Coin value not available yet, retrying...');
-      await new Promise(resolve => setTimeout(resolve, 1000));  // Wait for 1 second before checking again
+      await new Promise(resolve => setTimeout(resolve, 1000));
       coinValue = await page.$eval('.goalText', el => el.textContent.trim());
       retries++;
     }
 
-    console.log('Extracted coin value: ' + coinValue);  // Log the extracted value
-
-    // Split the coin value to get the number before ' / '
-    const coinAmount = coinValue.split(' / ')[0].trim();
-    console.log('Coin amount before the slash: ' + coinAmount);  // Log the split coin amount
-
+    const coinAmount = parseInt(coinValue.split(' / ')[0].trim(), 10);
     await browser.close();
-    console.log('Closed Puppeteer');  // Log when Puppeteer closes
 
-    // Check if the value has changed, and only overwrite if it's different
-    const lastSavedValue = getLastSavedCoinValue();
-    if (lastSavedValue !== coinAmount) {
-      console.log(`Coin value has changed from ${lastSavedValue} to ${coinAmount}`);
-      saveCoinValueAsHtml(coinAmount);  // Save the new value as an HTML file
+    const lastSavedValue = parseInt(getLastSavedCoinValue(), 10);
+
+    if (coinAmount >= COIN_THRESHOLD) {
+      console.log("Coin value reached 2500, triggering OBS and resetting value.");
+      triggerOBS();
+      saveCoinValueAsHtml('0');
+    } else if (lastSavedValue !== coinAmount) {
+      saveCoinValueAsHtml(coinAmount);
     } else {
       console.log(`Coin value has not changed (${coinAmount})`);
     }
 
-    // Send the coin amount back as plain text
-    res.send(coinAmount);
-    console.log('Sent response with coin amount');  // Log when response is sent
+    res.send(`${coinAmount} / 2500`);
   } catch (error) {
-    console.error('Error during scraping:', error);  // Log any error during the process
+    console.error('Error during scraping:', error);
     res.status(500).json({ error: 'Failed to scrape coin value' });
   }
 });
@@ -107,5 +124,5 @@ app.get('/get-coin-value', async (req, res) => {
 // Start the Express server on port 3000
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);  // Log when the server is running
+  console.log(`Server is running on port ${PORT}`);
 });
