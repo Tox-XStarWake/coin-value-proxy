@@ -25,7 +25,6 @@ const saveCoinValueAsHtml = (coinValue) => {
       <title>Coin Value</title>
     </head>
     <body>
-      <h1>Coin Value</h1>
       <p>${coinValue}</p>
     </body>
     </html>
