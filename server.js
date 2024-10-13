@@ -41,25 +41,39 @@ const triggerOBS = async () => {
     console.log("Connecting to OBS WebSocket...");
     await obs.connect('ws://ToxPC.xstarwake.com:4455', 'WakeCrew0BS'); // Updated connection method
 
-    console.log("Connected to OBS, triggering source visibility...");
+    // Get the scene item ID for the source "Noise"
+    const sceneItemResponse = await obs.call('GetSceneItemId', {
+      sceneName: "Test Scene",  // Replace with your scene name
+      sourceName: "Noise"       // Replace with your source name
+    });
+
+    const sceneItemId = sceneItemResponse.sceneItemId;
+    console.log(`Scene item ID for 'Noise': ${sceneItemId}`);
+
+    // Enable the source
     await obs.call('SetSceneItemEnabled', {
       sceneName: "Test Scene",  // Replace with your scene name
-      sourceName: "Noise",  // Replace with your source name
+      sceneItemId: sceneItemId,
       sceneItemEnabled: true,  // Unhide the source
     });
 
     console.log("Source unhidden, waiting 5 seconds...");
     setTimeout(async () => {
+      // Disable the source after 5 seconds
       await obs.call('SetSceneItemEnabled', {
         sceneName: "Test Scene",  // Replace with your scene name
-        sourceName: "Noise",  // Replace with your source name
+        sceneItemId: sceneItemId,
         sceneItemEnabled: false,  // Rehide the source
       });
       console.log("Source rehidden after 5 seconds.");
       await obs.disconnect();  // Disconnect from OBS WebSocket after operation
     }, 5000);
   } catch (error) {
-    console.error("Error triggering OBS:", error);
+    if (error.code === 300) {
+      console.error("OBS WebSocket Error: Bad request. Please check scene and source names.", error);
+    } else {
+      console.error("Error triggering OBS:", error);
+    }
   }
 };
 
