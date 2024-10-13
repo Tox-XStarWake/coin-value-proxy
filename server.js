@@ -122,7 +122,7 @@ app.get('/get-coin-value', async (req, res) => {
       console.log(`Coin value has not changed (${coinAmount})`);
     }
 
-    res.send(`${coinAmount} / 2500`);
+    res.send(`${coinAmount}`);
   } catch (error) {
     console.error('Error during scraping:', error);
     res.status(500).json({ error: 'Failed to scrape coin value' });
