@@ -41,12 +41,17 @@ app.get('/get-coin-value', async (req, res) => {
     }
 
     console.log('Extracted coin value: ' + coinValue);  // Log the extracted value
+
+    // Split the coin value to get the number before ' / '
+    const coinAmount = coinValue.split(' / ')[0].trim();
+    console.log('Coin amount before the slash: ' + coinAmount);  // Log the split coin amount
+
     await browser.close();
     console.log('Closed Puppeteer');  // Log when Puppeteer closes
 
-    // Send the coin value back as a JSON response
-    res.json({ coinValue });
-    console.log('Sent response with coin value');  // Log when response is sent
+    // Send the coin amount back as plain text
+    res.send(coinAmount);
+    console.log('Sent response with coin amount');  // Log when response is sent
   } catch (error) {
     console.error('Error during scraping:', error);  // Log any error during the process
     res.status(500).json({ error: 'Failed to scrape coin value' });
