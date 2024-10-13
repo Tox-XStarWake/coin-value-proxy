@@ -30,8 +30,14 @@ const saveCoinValueAsHtml = (coinValue) => {
     </body>
     </html>
   `;
-  fs.writeFileSync(coinValueHtmlFile, htmlContent, 'utf8');
-  console.log(`Coin value saved to HTML file: ${coinValue}`);
+
+  fs.writeFile(coinValueHtmlFile, htmlContent, 'utf8', (err) => {
+    if (err) {
+      console.error(`Failed to write file: ${err.message}`);
+    } else {
+      console.log(`Coin value saved to HTML file: ${coinValue}`);
+    }
+  });
 };
 
 // Main index route to show the server is running
