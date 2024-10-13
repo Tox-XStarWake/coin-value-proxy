@@ -11,9 +11,18 @@ const coinValueHtmlFile = '/var/www/html/coin_value.html';
 // Helper function to read the last saved coin value from the HTML file
 const getLastSavedCoinValue = () => {
   if (fs.existsSync(coinValueHtmlFile)) {
-    return fs.readFileSync(coinValueHtmlFile, 'utf8').match(/<p>(\d+)<\/p>/)[1];
+    const match = fs.readFileSync(coinValueHtmlFile, 'utf8').match(/<p>(\d+)<\/p>/);
+    
+    // Check if the value exists and is a valid number
+    if (match && !isNaN(match[1])) {
+      return parseInt(match[1], 10); // Return as a number
+    }
   }
-  return null;
+
+  // If the file is missing or the value is invalid, return 0 and overwrite it
+  console.log("Invalid or missing coin value, overwriting with 0.");
+  saveCoinValueAsHtml(0);
+  return 0;
 };
 
 // Helper function to save the coin value as an HTML file
@@ -110,7 +119,7 @@ app.get('/get-coin-value', async (req, res) => {
     const coinAmount = parseInt(coinValue.split(' / ')[0].trim(), 10);
     await browser.close();
 
-    const lastSavedValue = parseInt(getLastSavedCoinValue(), 10);
+    const lastSavedValue = getLastSavedCoinValue();
 
     if (coinAmount >= COIN_THRESHOLD) {
       console.log("Coin value reached 2500, triggering OBS and resetting value.");
