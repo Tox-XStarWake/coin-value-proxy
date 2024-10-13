@@ -100,7 +100,7 @@ app.get('/get-coin-value', async (req, res) => {
 
     let coinValue = await page.$eval('.goalText', el => el.textContent.trim());
     let retries = 0;
-    while (coinValue === 'No Data Available' && retries < 5) {
+    while (coinValue === 'No Data Available' && retries < 10) {
       console.log('Coin value not available yet, retrying...');
       await new Promise(resolve => setTimeout(resolve, 1000));
       coinValue = await page.$eval('.goalText', el => el.textContent.trim());
