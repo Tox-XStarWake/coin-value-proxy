@@ -1,93 +1,50 @@
 const puppeteer = require('puppeteer');
-
 const express = require('express');
-
+const path = require('path');  // Required to serve the HTML file
 const app = express();
-
 
 console.log('Starting server...');  // Initial log to confirm server is starting
 
-
 app.get('/get-coin-value', async (req, res) => {
-
   try {
-
     console.log('Received request for coin value');  // Log when a request is received
-
-    
-
     const browser = await puppeteer.launch({
-
       headless: true,
-
       args: ['--no-sandbox', '--disable-setuid-sandbox']
-
     });
 
     console.log('Launched Puppeteer');  // Log Puppeteer launch
-
-    
-
     const page = await browser.newPage();
-
     console.log('Opened a new page');  // Log page open
-
-    
-
     await page.goto('https://tikfinity.zerody.one/widget/goal?cid=146&metric=coins');
-
     console.log('Navigated to the coin goal page');  // Log navigation
 
-    
-
     // Wait for the goalText div to load
-
     await page.waitForSelector('.goalText');
-
     console.log('Found goalText element');  // Log when the element is found
 
-    
-
     // Extract the coin value text
-
     const coinValue = await page.$eval('.goalText', el => el.textContent);
-
     console.log('Extracted coin value: ' + coinValue);  // Log the extracted value
-
-
     await browser.close();
-
     console.log('Closed Puppeteer');  // Log when Puppeteer closes
 
-
     // Send the coin value back as a JSON response
-
     res.json({ coinValue });
-
     console.log('Sent response with coin value');  // Log when response is sent
-
   } catch (error) {
-
     console.error('Error during scraping:', error);  // Log any error during the process
-
     res.status(500).json({ error: 'Failed to scrape coin value' });
-
   }
-
 });
 
+// Serve a simple webpage at root '/'
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));  // Serve the HTML file
+});
 
 // Start the Express server
-
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
-
   console.log(`Server is running on port ${PORT}`);  // Log when the server is running
-
 });
-
-
-
-
-
