@@ -1,11 +1,10 @@
 const puppeteer = require('puppeteer');
 const express = require('express');
 const fs = require('fs');
-const axios = require('axios');  // Use axios to make HTTP requests to OBS
+const OBSWebSocket = require('obs-websocket-js');
 const app = express();
 
-const OBS_URL = 'http://ToxPC.xstarwake.com:4455'; // The OBS WebSocket server URL
-const OBS_PASSWORD = 'WakeCrew0BS'; // The OBS WebSocket password
+const obs = new OBSWebSocket();
 const COIN_THRESHOLD = 2500;
 const coinValueHtmlFile = '/var/www/html/coin_value.html'; 
 
@@ -39,45 +38,43 @@ const saveCoinValueAsHtml = (coinValue) => {
 // Function to trigger OBS to unhide source
 const triggerOBS = async () => {
   try {
-    console.log("Triggering OBS scene...");
-    // You need to authenticate and send requests to the OBS WebSocket API.
-    await axios.post(`${OBS_URL}/trigger`, {
-      password: OBS_PASSWORD,
-      requestType: "SetSceneItemEnabled",
-      sceneName: "Test Scene",
-      sourceName: "Noise",
-      visible: true,
+    console.log("Connecting to OBS WebSocket...");
+    await obs.connect({
+      address: 'ToxPC.xstarwake.com:4455', // OBS WebSocket address
+      password: 'WakeCrew0BS', // OBS WebSocket password
     });
 
-    console.log("OBS Source unhidden, waiting 5 seconds...");
+    console.log("Connected to OBS, triggering source visibility...");
+    await obs.call('SetSceneItemEnabled', {
+      sceneName: "Test Scene",  // Replace with your scene name
+      sourceName: "Noise",  // Replace with your source name
+      sceneItemEnabled: true,  // Unhide the source
+    });
 
+    console.log("Source unhidden, waiting 5 seconds...");
     setTimeout(async () => {
-      await axios.post(`${OBS_URL}/trigger`, {
-        password: OBS_PASSWORD,
-        requestType: "SetSceneItemEnabled",
-        sceneName: "Test Scene",
-        sourceName: "Noise",
-        visible: false,
+      await obs.call('SetSceneItemEnabled', {
+        sceneName: "Test Scene",  // Replace with your scene name
+        sourceName: "Noise",  // Replace with your source name
+        sceneItemEnabled: false,  // Rehide the source
       });
-      console.log("OBS Source rehidden after 5 seconds.");
+      console.log("Source rehidden after 5 seconds.");
+      obs.disconnect();  // Disconnect from OBS WebSocket after operation
     }, 5000);
   } catch (error) {
     console.error("Error triggering OBS:", error);
   }
 };
 
-// Route to manually trigger OBS using /testOBS
-app.get('/testOBS', async (req, res) => {
-  try {
-    console.log('Received request to manually trigger OBS');
-    await triggerOBS();  // Call the triggerOBS function
-    res.send('OBS trigger has been manually activated.');
-  } catch (error) {
-    console.error('Error during manual OBS trigger:', error);
-    res.status(500).send('Failed to trigger OBS.');
-  }
+// Main index route to show the server is running
+app.get('/', (req, res) => {
+  res.send(`
+    <h1>Coin Value Proxy Server is Running!</h1>
+    <p>Everything is working fine. Visit <a href="/get-coin-value">/get-coin-value</a> to fetch the current coin value.</p>
+  `);
 });
 
+// Route to get coin value and manage the threshold
 app.get('/get-coin-value', async (req, res) => {
   try {
     console.log('Received request for coin value');
@@ -119,6 +116,13 @@ app.get('/get-coin-value', async (req, res) => {
     console.error('Error during scraping:', error);
     res.status(500).json({ error: 'Failed to scrape coin value' });
   }
+});
+
+// Route to manually test the OBS trigger
+app.get('/testOBS', async (req, res) => {
+  console.log('Received request to manually trigger OBS');
+  await triggerOBS();
+  res.send('OBS trigger test initiated');
 });
 
 // Start the Express server on port 3000
