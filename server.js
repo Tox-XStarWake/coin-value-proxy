@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 const express = require('express');
 const fs = require('fs');
-const OBSWebSocket = require('obs-websocket-js');
+const { OBSWebSocket } = require('obs-websocket-js');  // Updated import for OBSWebSocket
 const app = express();
 
 const obs = new OBSWebSocket();
@@ -39,10 +39,7 @@ const saveCoinValueAsHtml = (coinValue) => {
 const triggerOBS = async () => {
   try {
     console.log("Connecting to OBS WebSocket...");
-    await obs.connect({
-      address: 'ToxPC.xstarwake.com:4455', // OBS WebSocket address
-      password: 'WakeCrew0BS', // OBS WebSocket password
-    });
+    await obs.connect('ws://ToxPC.xstarwake.com:4455', 'WakeCrew0BS'); // Updated connection method
 
     console.log("Connected to OBS, triggering source visibility...");
     await obs.call('SetSceneItemEnabled', {
@@ -59,7 +56,7 @@ const triggerOBS = async () => {
         sceneItemEnabled: false,  // Rehide the source
       });
       console.log("Source rehidden after 5 seconds.");
-      obs.disconnect();  // Disconnect from OBS WebSocket after operation
+      await obs.disconnect();  // Disconnect from OBS WebSocket after operation
     }, 5000);
   } catch (error) {
     console.error("Error triggering OBS:", error);
