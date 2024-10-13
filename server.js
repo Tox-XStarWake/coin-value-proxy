@@ -1,6 +1,5 @@
 const puppeteer = require('puppeteer');
 const express = require('express');
-const path = require('path');  // Required to serve the HTML file
 const app = express();
 
 console.log('Starting server...');  // Initial log to confirm server is starting
@@ -23,8 +22,16 @@ app.get('/get-coin-value', async (req, res) => {
     await page.waitForSelector('.goalText');
     console.log('Found goalText element');  // Log when the element is found
 
-    // Extract the coin value text
-    const coinValue = await page.$eval('.goalText', el => el.textContent);
+    // Check and wait for the value to update from 'No Data Available'
+    let coinValue = await page.$eval('.goalText', el => el.textContent.trim());
+    let retries = 0;
+    while (coinValue === 'No Data Available' && retries < 10) {  // Retry up to 10 times
+      console.log('Coin value not available yet, retrying...');
+      await page.waitForTimeout(1000);  // Wait for 1 second before checking again
+      coinValue = await page.$eval('.goalText', el => el.textContent.trim());
+      retries++;
+    }
+
     console.log('Extracted coin value: ' + coinValue);  // Log the extracted value
     await browser.close();
     console.log('Closed Puppeteer');  // Log when Puppeteer closes
@@ -36,11 +43,6 @@ app.get('/get-coin-value', async (req, res) => {
     console.error('Error during scraping:', error);  // Log any error during the process
     res.status(500).json({ error: 'Failed to scrape coin value' });
   }
-});
-
-// Serve a simple webpage at root '/'
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));  // Serve the HTML file
 });
 
 // Start the Express server
