@@ -1,7 +1,11 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
+const cors = require('cors');
 const app = express();
 const port = 3000;
+
+// Enable CORS for all routes
+app.use(cors());
 
 let rawCoinValue = 0;
 let lastUpdated = new Date();
@@ -49,6 +53,16 @@ async function scrapeCoinValue() {
     await browser.close();
   }
 }
+
+// New route for the home page
+app.get('/', (req, res) => {
+  res.send(`
+    <h1>Coin Value Proxy Server is Running!</h1>
+    <p>Everything is working fine. Visit <a href="/raw_coin_value">/raw_coin_value</a> to fetch the current coin value.</p>
+    <p>Or visit <a href="/coin_count">/coin_count</a> to check the remainder.</p>
+    <p>Or visit <a href="/necklace_count">/necklace_count</a> to see the necklace count.</p>
+  `);
+});
 
 // Endpoint to serve the raw coin value
 app.get('/raw_coin_value', (req, res) => {
