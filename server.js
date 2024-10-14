@@ -71,6 +71,12 @@ app.get('/coin_count', (req, res) => {
   res.json({ coinCount: remainder });
 });
 
+// Endpoint to serve the remainder (coin_count) as HTML
+app.get('/coin_count_html', (req, res) => {
+  const remainder = rawCoinValue % 2500;
+  res.send(`${remainder}`);
+});
+
 // Endpoint to serve the divisible count (necklace_count)
 app.get('/necklace_count', (req, res) => {
   const necklaceCount = Math.floor(rawCoinValue / 2500);
