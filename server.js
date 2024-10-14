@@ -1,7 +1,10 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
+const cors = require('cors');
 const app = express();
 const port = 3000;
+
+app.use(cors());
 
 let rawCoinValue = 0;
 let lastUpdated = new Date();
